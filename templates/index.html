@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Notes App</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            text-align: center;
+            color: #263238;
+        }
+
+        textarea {
+            width: 100%;
+            height: 110px;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            color: white;
+            background: #2563eb;
+        }
+
+        .note {
+            background: #f1f5f9;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+        }
+
+        .note p {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .delete {
+            background: #dc2626;
+            margin-left: 8px;
+        }
+
+        .edit {
+            background: #059669;
+        }
+
+        #message {
+            margin-top: 12px;
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>My Notes</h1>
+
+    <textarea id="noteText" placeholder="Write your note here..."></textarea>
+
+    <button id="saveButton" onclick="saveNote()">Add Note</button>
+
+    <p id="message" role="status"></p>
+
+    <h2>Your Notes</h2>
+    <div id="notesList"></div>
+</div>
+
+<script>
+    let editingId = null;
+
+    async function loadNotes() {
+        const response = await fetch("/notes");
+        const notes = await response.json();
+
+        const list = document.getElementById("notesList");
+        list.innerHTML = "";
+
+        notes.forEach(note => {
+            const div = document.createElement("div");
+            div.className = "note";
+
+            const text = document.createElement("p");
+            text.textContent = note.text;
+
+            const editButton = document.createElement("button");
+            editButton.className = "edit";
+            editButton.textContent = "Edit";
+            editButton.onclick = () => editNote(note.id, note.text);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete";
+            deleteButton.textContent = "Delete";
+            deleteButton.onclick = () => deleteNote(note.id);
+
+            div.appendChild(text);
+            div.appendChild(editButton);
+            div.appendChild(deleteButton);
+            list.appendChild(div);
+        });
+    }
+
+    async function saveNote() {
+        const input = document.getElementById("noteText");
+        const message = document.getElementById("message");
+        const text = input.value.trim();
+
+        if (!text) {
+            message.textContent = "Please enter a note.";
+            return;
+        }
+
+        const url = editingId === null
+            ? "/notes"
+            : `/notes/${editingId}`;
+
+        const method = editingId === null ? "POST" : "PUT";
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({text: text})
+        });
+
+        if (!response.ok) {
+            message.textContent = "Could not save the note.";
+            return;
+        }
+
+        input.value = "";
+        editingId = null;
+        document.getElementById("saveButton").textContent = "Add Note";
+        message.textContent = "Note saved successfully.";
+
+        await loadNotes();
+    }
+
+    function editNote(id, text) {
+        editingId = id;
+        document.getElementById("noteText").value = text;
+        document.getElementById("saveButton").textContent = "Update Note";
+        document.getElementById("message").textContent = "";
+    }
+
+    async function deleteNote(id) {
+        if (!confirm("Are you sure you want to delete this note?")) {
+            return;
+        }
+
+        const response = await fetch(`/notes/${id}`, {
+            method: "DELETE"
+        });
+
+        if (response.ok) {
+            document.getElementById("message").textContent =
+                "Note deleted successfully.";
+            await loadNotes();
+        } else {
+            document.getElementById("message").textContent =
+                "Could not delete the note.";
+        }
+    }
+
+    loadNotes();
+</script>
+
+</body>
+</html>
