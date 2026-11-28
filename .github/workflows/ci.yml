@@ -53,3 +53,15 @@ jobs:
           tags: |
             sudharsanbala/devops-notes-app:latest
             sudharsanbala/devops-notes-app:${{ github.sha }}
+
+
+  deploy-render:
+    needs: docker-publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deployment
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
